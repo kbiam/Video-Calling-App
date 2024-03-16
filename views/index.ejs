@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>VideoChat</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+  </head>
+  <body>
+    <div class="form">
+      <input type="email" placeholder="Enter Your Email" id="email"><br>
+      <input type="text" id="roomID" placeholder="Enter Room ID"><br>
+      <button type="submit" onclick="joinroom()">Enter</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      let roomID;
+      let emailID;
+
+      function joinroom(){
+        roomID = document.getElementById("roomID").value;
+        emailID = document.getElementById("email").value;
+
+        // Redirect to the chatroom with both roomID and emailID as query parameters
+        window.location.href = `http://localhost:3001/chatroom/${encodeURIComponent(roomID)}?emailID=${encodeURIComponent(emailID)}&roomID=${encodeURIComponent(roomID)}`;
+      }
+    </script>
+  </body>
+</html>
