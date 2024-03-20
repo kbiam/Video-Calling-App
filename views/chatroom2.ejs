@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="/stylesheets/chatroom2.css">
+</head>
+<body>
+    <div class="video">
+        <div class="container" id="container">
+            <h3 id="users">🔴</h3>
+            <img src="/images/4128262.png" alt="">
+
+            <!-- <p>Email</p> -->
+
+        </div>
+        <div class="container2" id="container2">
+            <img src="/images/4128262.png" alt="">
+            <!-- <h5>Name</h5> -->
+            <p>You</p>
+        </div>
+        <div class="container3"><p>Screenshare</p></div>
+        <div class="elements">
+            <p id="cam">📽️</p>
+            <p id="call-button">🤙 Start Call</p>
+            <!-- <p id="end-button">📞 End Call</p> -->
+            <p id="mic">🎙️</p>
+        </div>
+    </div>
+    <div class="chat">
+        <h2>Chat</h2>
+        <div class="messagesbox">
+
+        </div>
+        <input type="text" id="textinput" placeholder="Type Your Message">
+        <img src="/images/send-icon-2048x2020-jrvk5f1r-fotor-20240317112711.jpg" id="sendimg">
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/react-player/dist/ReactPlayer.standalone.js'></script>
+    <script type="module" src="/peer.js"></script>
+
+    <script type="module">
+        import peer from "/peer.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let emailID = urlParams.get('emailID');
+        let roomID = urlParams.get('roomID');
+        let remoteSocketID;
+        let connectionelement = document.getElementById('users')
+
+        const socket = io();
+        socket.emit('join-room', { roomID: roomID, emailID: emailID });
+        socket.on("room:join", (data) => {
+            console.log(data);
+        });
+        socket.on('update-users', (users) => {
+            console.log('Users in the room:', users);
+            // Update UI or perform other actions as needed
+        });
+
+        socket.on("user-joined", (data) => {
+            // const p = document.createElement("p");
+            // p.style.color = 'black';
+            // p.style.fontWeight = 'bold';
+            // p.innerText = data['emailID'] + " Joined The Chat"
+            remoteSocketID = data['id'];
+            socket.emit("Setremotesocketid",remoteSocketID)
+            // document.querySelector('.messagesbox').appendChild(p);
+            document.getElementById('users').innerText = '🟢';
+        });
+        socket.on("Settingremotesocketid",(id)=>{
+            remoteSocketID = id;
+            connectionelement.innerText = '🟢'
+
+        });
+        socket.on("disconnected-users", (removeduser) => {
+            // const p = document.createElement("p");
+            // p.style.color = 'black';
+            // p.style.fontWeight = 'bold';
+            // p.innerText = removeduser + " left The Chat"
+            // document.querySelector('.messagesbox').appendChild(p);
+            // document.getElementById('users').innerText = 'Disconnected';
+        });
+
+        socket.on("incoming-call", async (data) => {
+            alert("Incoming Call")
+
+            console.log(`${data.from} is calling you`);
+            if (!remoteSocketID) {
+                remoteSocketID = data.from;
+            }
+
+            // connectionelement.innerText = 'Set again'
+
+            const ans = await peer.getAnswer(data.offer);
+            socket.emit("call-accepted", { to: data.from, ans });
+            await peer.setLocalDescription(data.offer);
+
+            setupplayer();
+
+        });
+
+        socket.on("call-connected", async (data) => {
+            await peer.setLocalDescription(data.ans);
+            console.log("Call Connected");
+           
+
+            await setupTracks();
+            socket.emit("setuptracks",data.from)
+
+
+
+        });
+        socket.on("remotetracksetup",()=>{
+            setupTracks();
+        })
+
+        async function setupTracks() {
+            try {
+                const stream = await mystream();
+                const tracks = stream.getTracks();
+
+                tracks.forEach((track) => {
+                    peer.peer.addTrack(track, stream);
+                });
+            } catch (error) {
+                console.error('Error setting up tracks:', error);
+            }
+        }
+
+        socket.on("peer-nego-needed", async ({ from, offer }) => {
+            console.log("peer-nego")
+            const ans = await peer.getAnswer(offer);
+            socket.emit('peer-nego-done', { to: from, ans });
+
+
+        });
+
+        socket.on("peer-nego-final", async ({ from, ans }) => {
+            console.log("final")
+            await peer.setLocalDescription(ans)
+            await peer.setupDataChannel();
+            // console.log("data channel created 2");
+            
+        });
+        socket.on("ice-candidate", async ({ from, candidate }) => {
+    // Handle the received ICE candidate
+        await peer.handleIceCandidate(candidate);
+        // console.log(candidate);
+        });
+
+        async function mystream() {
+            try {
+                return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            } catch (error) {
+                console.error('Error accessing user media:', error);
+                throw error;
+            }
+        }
+
+        async function setupplayer() {
+            try {
+                const container = document.getElementById('container2');
+                const url = await mystream();
+                console.log("ye h url",url);
+                let remoteVideoElement = container.querySelector('video');
+                if (!remoteVideoElement) {
+            remoteVideoElement = document.createElement('video');
+            remoteVideoElement.style.position = 'absolute'
+            remoteVideoElement.style.left = '0px'
+            remoteVideoElement.style.top = '-200px'
+            remoteVideoElement.style.minWidth = '540px'
+            remoteVideoElement.style.maxWidth = '540px'
+            remoteVideoElement.style.minHeight = '700px'
+            remoteVideoElement.style.maxHeight = '700px'
+            remoteVideoElement.style.borderRadius = '10px'
+            remoteVideoElement.autoplay = true;
+            remoteVideoElement.playsinline = true;
+            container.appendChild(remoteVideoElement);
+            remoteVideoElement.srcObject = url;
+
+        }
+                // renderReactPlayer(container, { url, playing: true });
+            } catch (error) {
+                console.error('Error setting up player:', error);
+            }
+        }
+
+        document.querySelector('#sendimg').addEventListener('click', async function () {
+            const inputmsg = document.getElementById('textinput').value;
+            peer.sendMessage(inputmsg);
+            const p = document.createElement('p');
+            p.id = 'mymsg'
+            p.innerText = "You: " + inputmsg;
+            document.querySelector('.messagesbox').appendChild(p);
+
+        });
+
+        document.querySelector('#call-button').addEventListener('click', async function () {
+            const offer = await peer.getoffer();
+            socket.emit("user-call", { to: remoteSocketID, offer });
+            setupplayer();
+        });
+        peer.peer.addEventListener('icecandidate', (event) => {
+            if (event.candidate) {
+             socket.emit("ice-candidate", { to: remoteSocketID, candidate: event.candidate });
+                    }
+                });
+
+
+        peer.peer.addEventListener('negotiationneeded', async () => {
+            const offer = await peer.getoffer();
+            socket.emit('peer-nego-needed', { offer, to: remoteSocketID });
+        });
+
+        peer.peer.addEventListener('track', async (ev) => {
+    try {
+        const remoteStream = ev.streams[0]; // Assuming you are dealing with the first stream in the array
+        const container2 = document.getElementById('container');
+
+        if (!container2) {
+            throw new Error("Container2 not found");
+        }
+
+        // Logging for debugging
+        console.log('Remote stream:', remoteStream);
+
+        // Check if remoteStream is a valid MediaStream
+        if (!(remoteStream instanceof MediaStream)) {
+            throw new Error('Invalid remote stream object');
+        }
+
+        // Get the video element or create one if it doesn't exist
+        let remoteVideoElement = container2.querySelector('video');
+        if (!remoteVideoElement) {
+            remoteVideoElement = document.createElement('video');
+            remoteVideoElement.style.position = 'absolute'
+            remoteVideoElement.style.left = '0px'
+            remoteVideoElement.style.top = '-200px'
+            remoteVideoElement.style.minWidth = '540px'
+            remoteVideoElement.style.maxWidth = '540px'
+            remoteVideoElement.style.minHeight = '700px'
+            remoteVideoElement.style.maxHeight = '700px'
+            remoteVideoElement.style.borderRadius = '20px'
+            remoteVideoElement.autoplay = true;
+            remoteVideoElement.playsinline = true;
+            container2.appendChild(remoteVideoElement);
+        }
+
+        // Set the srcObject property to the MediaStream
+        remoteVideoElement.srcObject = remoteStream;
+
+        // Handle errors (optional)
+        remoteVideoElement.addEventListener('error', (error) => {
+            console.error('Error displaying the remote stream:', error);
+        });
+
+    } catch (error) {
+        console.error('Error in track event handling:', error);
+        }
+    });
+
+    peer.peer.addEventListener('datachannel', event => {
+        const dataChannel = event.channel;
+        console.log('Data channel created:', dataChannel);
+        dataChannel.onopen = () => {
+            console.log('Data channel opened');
+        // Perform actions when the data channel is opened
+        };
+        dataChannel.onmessage = event => {
+
+
+
+            const p = document.createElement('p');
+            p.id = 'peermsg'
+            p.innerText = "Peer : " + event.data;
+
+            document.querySelector('.messagesbox').appendChild(p);
+
+            // console.log('Received message:', event.data);
+        // Handle incoming messages here
+        };  
+    });
+    console.log(document.cookie.split("=")[1])
+
+
+    //ScreenSharing
+    const displayMediaOptions = {
+        video: {
+            displaySurface: "browser",
+        },
+        audio: {
+            suppressLocalAudioPlayback: false,
+        },
+        preferCurrentTab: false,
+        selfBrowserSurface: "exclude",
+        systemAudio: "include",
+        surfaceSwitching: "include",
+        monitorTypeSurfaces: "include",
+    };
+    async function startCapture(displayMediaOptions) {
+    let captureStream = null;
+
+    try {
+        captureStream =
+        await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+        } catch (err) {
+            console.error(`Error: ${err}`);
+        }
+        // console.log("Screenshare",captureStream)
+        return captureStream;
+        }
+
+        document.getElementById("mic").addEventListener('click',function(){
+            screenshare();
+        })
+        async function screenshare() {
+            try {
+                const container = document.querySelector('.container3');
+                const url = await startCapture();
+                console.log("ye h screen share url",url);
+                const tracks = url.getTracks();
+
+                tracks.forEach((track) => {
+                peer.peer.addTrack(track, url);
+                });
+                let remoteVideoElement = container.querySelector('video');
+                if (!remoteVideoElement) {
+            remoteVideoElement = document.createElement('video');
+            remoteVideoElement.style.position = 'absolute'
+            remoteVideoElement.style.left = '0px'
+            remoteVideoElement.style.top = '0px'
+            remoteVideoElement.style.minWidth = '540px'
+            remoteVideoElement.style.maxWidth = '540px'
+            remoteVideoElement.style.minHeight = '700px'
+            remoteVideoElement.style.maxHeight = '700px'
+            remoteVideoElement.style.borderRadius = '10px'
+            remoteVideoElement.autoplay = true;
+            remoteVideoElement.playsinline = true;
+            container.appendChild(remoteVideoElement);
+            remoteVideoElement.srcObject = url;
+
+        }
+                // renderReactPlayer(container, { url, playing: true });
+            } catch (error) {
+                console.error('Error setting up player:', error);
+            }
+        }
+
+        
+
+
+    </script>
+</body>
+</html>
