@@ -66,8 +66,9 @@ app.use(function(err, req, res, next) {
       roomUsers[roomID].push({ emailID, socketID: socket.id });
       // Emit updated user list to all clients in the room
       socket.to(roomID).emit('update-users', roomUsers[roomID]);
-      socket.on("Setremotesocketid", (remoteSocketId) =>{
-        io.to(remoteSocketId).emit("Settingremotesocketid", socket.id);
+      socket.on("Setremotesocketid", (data) =>{
+
+        io.to(data.remoteSocketID).emit("Settingremotesocketid", {youremail:data.youremail,id:socket.id});
       });
   
       socket.to(socket.id).emit('room:join',data);
@@ -93,7 +94,10 @@ app.use(function(err, req, res, next) {
       socket.on("ice-candidate", ({ to, candidate }) => {
         io.to(to).emit("ice-candidate", { from: socket.id, candidate });
         // console.log(candidate);
-    });
+      });
+      socket.on("srcobjremove",(to)=>{
+        io.to(to).emit("removesrcobj")
+      })
 
       })
       socket.on('disconnect', () => {

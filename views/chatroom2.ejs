@@ -12,7 +12,7 @@
             <h3 id="users">🔴</h3>
             <img src="/images/4128262.png" alt="">
 
-            <!-- <p>Email</p> -->
+            <p id="peeremail">Email</p>
 
         </div>
         <div class="container2" id="container2">
@@ -20,7 +20,7 @@
             <!-- <h5>Name</h5> -->
             <p>You</p>
         </div>
-        <div class="container3"><p>Screenshare</p></div>
+        <!-- <div class="container3"><p>Screenshare</p></div> -->
         <div class="elements">
             <p id="cam">📽️</p>
             <p id="call-button">🤙 Start Call</p>
@@ -49,6 +49,7 @@
         let roomID = urlParams.get('roomID');
         let remoteSocketID;
         let connectionelement = document.getElementById('users')
+        let localstream;
 
         const socket = io();
         socket.emit('join-room', { roomID: roomID, emailID: emailID });
@@ -60,19 +61,33 @@
             // Update UI or perform other actions as needed
         });
 
-        socket.on("user-joined", (data) => {
+        socket.on("user-joined",  (data) => {
             // const p = document.createElement("p");
             // p.style.color = 'black';
             // p.style.fontWeight = 'bold';
             // p.innerText = data['emailID'] + " Joined The Chat"
+            // document.getElementById('container2').style.right = '1%'
+            // setTimeout(()=>{
+            //     document.getElementById('container').style.display = 'block'
+            // },500);
+            let youremail = document.cookie.split("=")[1]
+
+            document.getElementById('peeremail').innerText = data.emailID
             remoteSocketID = data['id'];
-            socket.emit("Setremotesocketid",remoteSocketID)
+            socket.emit("Setremotesocketid",{youremail,remoteSocketID})
             // document.querySelector('.messagesbox').appendChild(p);
             document.getElementById('users').innerText = '🟢';
         });
-        socket.on("Settingremotesocketid",(id)=>{
-            remoteSocketID = id;
-            connectionelement.innerText = '🟢'
+        socket.on("Settingremotesocketid",(data)=>{
+            remoteSocketID = data.id;
+            document.getElementById('peeremail').innerText = data.youremail
+
+            // document.getElementById('container2').style.right = '1%'
+            // setTimeout(()=>{
+            //     document.getElementById('container').style.display = 'block'
+            // },500);   
+            connectionelement.innerText = '🟢'         
+            
 
         });
         socket.on("disconnected-users", (removeduser) => {
@@ -98,7 +113,7 @@
             socket.emit("call-accepted", { to: data.from, ans });
             await peer.setLocalDescription(data.offer);
 
-            setupplayer();
+            await setupplayer();
 
         });
 
@@ -113,8 +128,8 @@
 
 
         });
-        socket.on("remotetracksetup",()=>{
-            setupTracks();
+        socket.on("remotetracksetup",async ()=>{
+            await setupTracks();
         })
 
         async function setupTracks() {
@@ -153,12 +168,85 @@
 
         async function mystream() {
             try {
-                return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                
+                localstream  =  await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                console.log("audiostream",localstream.getAudioTracks())
+                console.log("videostream",localstream.getVideoTracks())
+
+                return localstream;
             } catch (error) {
                 console.error('Error accessing user media:', error);
                 throw error;
             }
         }
+        async function stopVideoStream() {
+            try {
+                // console.log(localstream);
+                const tracks = localstream.getVideoTracks();
+                // console.log("video tracks stopping",tracks)
+
+                // Stop each video track in the stream
+                    tracks.forEach(track => {
+                        track.stop();
+                        localstream.removeTrack(track)
+                    
+                    });
+                    console.log("removedtrracks",localstream.getVideoTracks())
+
+                // Update the UI or perform other actions as needed
+            } catch (error) {
+                console.error('Error stopping video stream:', error);
+            }
+        }
+        document.getElementById('cam').addEventListener('click', async () => {
+            const container = document.getElementById('container2');
+
+            async function offcam(){
+                // container.querySelector('video').srcObject = null
+                const audioStream = new MediaStream(localstream.getAudioTracks());
+
+// Set the new MediaStream as the srcObject for the video element
+            container.querySelector('video').srcObject = audioStream;
+                await stopVideoStream();
+                container.classList.add("oncam");
+                socket.emit("srcobjremove",remoteSocketID);
+
+            }
+            async function startcam(){
+                const tracks = localstream.getVideoTracks();
+                const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                console.log("newstream",newStream)
+                console.log("newstreamvideo",newStream.getVideoTracks())
+                // console.log("localstreamaudio",localstream.getAudioTracks())
+
+                const newTracks = newStream.getVideoTracks();
+                newTracks.forEach(track => {
+                    localstream.addTrack(track);
+                    peer.peer.addTrack(track, newStream);
+                    // Add new video tracks to the stream
+                });
+
+                container.querySelector('video').srcObject = localstream
+
+                container.classList.remove("oncam");
+
+            }
+            if(container.classList.contains("oncam")){
+                startcam();
+            }
+            else{
+                offcam();
+            }
+            
+        });
+        socket.on("removesrcobj",()=>{
+            const container2 = document.getElementById('container');
+    const audioStream = new MediaStream(localstream.getAudioTracks());
+
+    // Set the new MediaStream as the srcObject for the video element
+    container2.querySelector('video').srcObject = audioStream;
+        })
+
 
         async function setupplayer() {
             try {
@@ -178,6 +266,8 @@
             remoteVideoElement.style.borderRadius = '10px'
             remoteVideoElement.autoplay = true;
             remoteVideoElement.playsinline = true;
+            remoteVideoElement.volume = '0';
+
             container.appendChild(remoteVideoElement);
             remoteVideoElement.srcObject = url;
 
@@ -200,8 +290,9 @@
 
         document.querySelector('#call-button').addEventListener('click', async function () {
             const offer = await peer.getoffer();
+            await setupplayer();
+
             socket.emit("user-call", { to: remoteSocketID, offer });
-            setupplayer();
         });
         peer.peer.addEventListener('icecandidate', (event) => {
             if (event.candidate) {
@@ -246,6 +337,7 @@
             remoteVideoElement.style.borderRadius = '20px'
             remoteVideoElement.autoplay = true;
             remoteVideoElement.playsinline = true;
+            remoteVideoElement.volume = '0'
             container2.appendChild(remoteVideoElement);
         }
 
@@ -283,7 +375,6 @@
         // Handle incoming messages here
         };  
     });
-    console.log(document.cookie.split("=")[1])
 
 
     //ScreenSharing
@@ -314,7 +405,15 @@
         }
 
         document.getElementById("mic").addEventListener('click',function(){
-            screenshare();
+            const audiotracks = localstream.getAudioTracks();
+            console.log("0",audiotracks[0])
+
+            audiotracks.forEach(track=> {
+
+
+                track.enabled  = !track.enabled
+                console.log(track.enabled)
+            })
         })
         async function screenshare() {
             try {
@@ -325,7 +424,7 @@
 
                 tracks.forEach((track) => {
                 peer.peer.addTrack(track, url);
-                });
+    });
                 let remoteVideoElement = container.querySelector('video');
                 if (!remoteVideoElement) {
             remoteVideoElement = document.createElement('video');
