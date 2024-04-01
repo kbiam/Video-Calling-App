@@ -95,9 +95,13 @@ app.use(function(err, req, res, next) {
         io.to(to).emit("ice-candidate", { from: socket.id, candidate });
         // console.log(candidate);
       });
+      socket.on("screenshareID",({to, SSID})=>{
+        io.to(to).emit("peerSSID",{from: socket.id, SSID:SSID});
+      })
       socket.on("srcobjremove",(to)=>{
         io.to(to).emit("removesrcobj")
       })
+
 
       })
       socket.on('disconnect', () => {

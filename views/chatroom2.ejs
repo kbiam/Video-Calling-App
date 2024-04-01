@@ -10,28 +10,29 @@
     <div class="video">
         <div class="container" id="container">
             <h3 id="users">🔴</h3>
-            <img src="/images/4128262.png" alt="">
+            <img src="/images/pfp-profile-picture-5382083-4495777.webp" alt="">
 
             <p id="peeremail">Email</p>
 
         </div>
         <div class="container2" id="container2">
-            <img src="/images/4128262.png" alt="">
+            <img src="/images/pfp-profile-picture-5382083-44957772.jpg" alt="">
             <!-- <h5>Name</h5> -->
             <p>You</p>
         </div>
-        <!-- <div class="container3"><p>Screenshare</p></div> -->
+        <div class="container3" id="container3"><p>Screenshare</p></div>
         <div class="elements">
+            <p id="messageboxicon">💬</p>
             <p id="cam">📽️</p>
             <p id="call-button">🤙 Start Call</p>
             <!-- <p id="end-button">📞 End Call</p> -->
             <p id="mic">🎙️</p>
+            <p id="screenshare">🖥️</p>
         </div>
     </div>
     <div class="chat">
         <h2>Chat</h2>
         <div class="messagesbox">
-
         </div>
         <input type="text" id="textinput" placeholder="Type Your Message">
         <img src="/images/send-icon-2048x2020-jrvk5f1r-fotor-20240317112711.jpg" id="sendimg">
@@ -50,6 +51,7 @@
         let remoteSocketID;
         let connectionelement = document.getElementById('users')
         let localstream;
+        let peerSSID;
 
         const socket = io();
         socket.emit('join-room', { roomID: roomID, emailID: emailID });
@@ -251,8 +253,10 @@
         async function setupplayer() {
             try {
                 const container = document.getElementById('container2');
-                const url = await mystream();
-                console.log("ye h url",url);
+                let url = await mystream();
+
+                console.log("ye h url",url.getVideoTracks());
+                console.log("ye h audiourl",url.getAudioTracks());
                 let remoteVideoElement = container.querySelector('video');
                 if (!remoteVideoElement) {
             remoteVideoElement = document.createElement('video');
@@ -266,7 +270,7 @@
             remoteVideoElement.style.borderRadius = '10px'
             remoteVideoElement.autoplay = true;
             remoteVideoElement.playsinline = true;
-            remoteVideoElement.volume = '0';
+            // remoteVideoElement.volume = '0';
 
             container.appendChild(remoteVideoElement);
             remoteVideoElement.srcObject = url;
@@ -281,9 +285,12 @@
         document.querySelector('#sendimg').addEventListener('click', async function () {
             const inputmsg = document.getElementById('textinput').value;
             peer.sendMessage(inputmsg);
-            const p = document.createElement('p');
-            p.id = 'mymsg'
-            p.innerText = "You: " + inputmsg;
+            const p = document.createElement('div');
+            p.classList.add('mymsg')
+            const span  = document.createElement('span')
+            span.innerText =  inputmsg;
+            
+            p.appendChild(span)
             document.querySelector('.messagesbox').appendChild(p);
 
         });
@@ -308,21 +315,40 @@
 
         peer.peer.addEventListener('track', async (ev) => {
     try {
-        const remoteStream = ev.streams[0]; // Assuming you are dealing with the first stream in the array
+       
+        let remoteStream = ev.streams[0]; // Assuming you are dealing with the first stream in the array
         const container2 = document.getElementById('container');
-
+        // console.log("audiotracksssssss",ev.streams[0].getAudioTracks())
+        // console.log("videotracksssssss,",ev.streams[0].getVideoTracks()[0].id)
+        
         if (!container2) {
             throw new Error("Container2 not found");
         }
 
         // Logging for debugging
-        console.log('Remote stream:', remoteStream);
+        console.log('stream',remoteStream.getTracks());
 
         // Check if remoteStream is a valid MediaStream
         if (!(remoteStream instanceof MediaStream)) {
             throw new Error('Invalid remote stream object');
         }
-
+        if(ev.streams[0].getVideoTracks()[0].id === peerSSID){
+            let screensharecon = document.getElementById("container3")
+            let remoteVideoElement1 = document.createElement('video');
+            remoteVideoElement1.style.position = 'absolute'
+            remoteVideoElement1.style.left = '0px'
+            remoteVideoElement1.style.top = '-200px'
+            remoteVideoElement1.style.minWidth = '540px'
+            remoteVideoElement1.style.maxWidth = '540px'
+            remoteVideoElement1.style.minHeight = '700px'
+            remoteVideoElement1.style.maxHeight = '700px'
+            remoteVideoElement1.style.borderRadius = '20px'
+            remoteVideoElement1.autoplay = true;
+            remoteVideoElement1.playsinline = true;
+            screensharecon.appendChild(remoteVideoElement1);
+            remoteVideoElement1.srcObject = remoteStream;
+        }
+        else{
         // Get the video element or create one if it doesn't exist
         let remoteVideoElement = container2.querySelector('video');
         if (!remoteVideoElement) {
@@ -337,7 +363,7 @@
             remoteVideoElement.style.borderRadius = '20px'
             remoteVideoElement.autoplay = true;
             remoteVideoElement.playsinline = true;
-            remoteVideoElement.volume = '0'
+            // remoteVideoElement.volume = '0'
             container2.appendChild(remoteVideoElement);
         }
 
@@ -348,11 +374,13 @@
         remoteVideoElement.addEventListener('error', (error) => {
             console.error('Error displaying the remote stream:', error);
         });
+    }
 
     } catch (error) {
         console.error('Error in track event handling:', error);
         }
     });
+    
 
     peer.peer.addEventListener('datachannel', event => {
         const dataChannel = event.channel;
@@ -375,9 +403,21 @@
         // Handle incoming messages here
         };  
     });
+    document.getElementById("mic").addEventListener('click',function(){
+            const audiotracks = localstream.getAudioTracks();
+            console.log("0",audiotracks[0])
+
+            audiotracks.forEach(track=> {
+                track.enabled  = !track.enabled
+                console.log(track.enabled)
+            })
+        })
 
 
     //ScreenSharing
+    socket.on("peerSSID",(data)=>{
+        peerSSID = data.SSID;
+    })
     const displayMediaOptions = {
         video: {
             displaySurface: "browser",
@@ -404,17 +444,7 @@
         return captureStream;
         }
 
-        document.getElementById("mic").addEventListener('click',function(){
-            const audiotracks = localstream.getAudioTracks();
-            console.log("0",audiotracks[0])
 
-            audiotracks.forEach(track=> {
-
-
-                track.enabled  = !track.enabled
-                console.log(track.enabled)
-            })
-        })
         async function screenshare() {
             try {
                 const container = document.querySelector('.container3');
@@ -423,6 +453,8 @@
                 const tracks = url.getTracks();
 
                 tracks.forEach((track) => {
+                console.log("tracks",track)
+                socket.emit("screenshareID",{to:remoteSocketID,SSID:track.id});
                 peer.peer.addTrack(track, url);
     });
                 let remoteVideoElement = container.querySelector('video');
@@ -430,11 +462,13 @@
             remoteVideoElement = document.createElement('video');
             remoteVideoElement.style.position = 'absolute'
             remoteVideoElement.style.left = '0px'
-            remoteVideoElement.style.top = '0px'
-            remoteVideoElement.style.minWidth = '540px'
-            remoteVideoElement.style.maxWidth = '540px'
+            remoteVideoElement.style.top = '30px'
+            remoteVideoElement.style.maxWidth = '1100px'
+            remoteVideoElement.style.maxHeight = '1800px'
+            /*remoteVideoElement.style.minWidth = '540px'
+            
             remoteVideoElement.style.minHeight = '700px'
-            remoteVideoElement.style.maxHeight = '700px'
+            */
             remoteVideoElement.style.borderRadius = '10px'
             remoteVideoElement.autoplay = true;
             remoteVideoElement.playsinline = true;
@@ -447,7 +481,18 @@
                 console.error('Error setting up player:', error);
             }
         }
+        document.getElementById("screenshare").addEventListener('click',function(){
+            screenshare();
+        })
+        document.getElementById("messageboxicon").addEventListener("click", () => {
+            const chatPanel = document.querySelector(".chat");
+            const videopanel = document.querySelector(".video");
 
+            const isOpen = chatPanel.style.right === "10px";
+            chatPanel.style.right = isOpen ? "-350px" : "10px";
+            videopanel.style.right = isOpen ? "0px" : "180px" 
+
+        });
         
 
 
