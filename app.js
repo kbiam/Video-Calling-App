@@ -101,6 +101,9 @@ app.use(function(err, req, res, next) {
       socket.on("srcobjremove",(to)=>{
         io.to(to).emit("removesrcobj")
       })
+      socket.on("removeSSsrc",(to)=>{
+        io.to(to).emit("removeSSsrcFromPeers")
+      })
 
 
       })

@@ -15,12 +15,12 @@
             <p id="peeremail">Email</p>
 
         </div>
-        <div class="container2" id="container2">
+        <div class="container2" id="container2" >
             <img src="/images/pfp-profile-picture-5382083-44957772.jpg" alt="">
             <!-- <h5>Name</h5> -->
             <p>You</p>
         </div>
-        <div class="container3" id="container3"><p>Screenshare</p></div>
+        <div class="container3" id="container3" ></div>
         <div class="elements">
             <p id="messageboxicon">💬</p>
             <p id="cam">📽️</p>
@@ -52,6 +52,7 @@
         let connectionelement = document.getElementById('users')
         let localstream;
         let peerSSID;
+
 
         const socket = io();
         socket.emit('join-room', { roomID: roomID, emailID: emailID });
@@ -261,12 +262,13 @@
                 if (!remoteVideoElement) {
             remoteVideoElement = document.createElement('video');
             remoteVideoElement.style.position = 'absolute'
-            remoteVideoElement.style.left = '0px'
-            remoteVideoElement.style.top = '-200px'
-            remoteVideoElement.style.minWidth = '540px'
-            remoteVideoElement.style.maxWidth = '540px'
-            remoteVideoElement.style.minHeight = '700px'
-            remoteVideoElement.style.maxHeight = '700px'
+            remoteVideoElement.style.left = '50%'
+            remoteVideoElement.style.top = '50%'
+            remoteVideoElement.style.transform = 'translate(-50%,-50%)';  
+            // remoteVideoElement.style.minWidth = '540px'
+            remoteVideoElement.style.maxWidth = `${container.offsetWidth}px`
+            // remoteVideoElement.style.minHeight = '700px'
+            // remoteVideoElement.style.maxHeight = `${container.offsetHeight}px`
             remoteVideoElement.style.borderRadius = '10px'
             remoteVideoElement.autoplay = true;
             remoteVideoElement.playsinline = true;
@@ -316,56 +318,72 @@
         peer.peer.addEventListener('track', async (ev) => {
     try {
        
-        let remoteStream = ev.streams[0]; // Assuming you are dealing with the first stream in the array
-        const container2 = document.getElementById('container');
+        let remoteStream = ev.streams[0]; 
+        const container = document.getElementById('container');
+        const peercontainer = document.getElementById("container2");
+        const container3 = document.querySelector(".container3")
         // console.log("audiotracksssssss",ev.streams[0].getAudioTracks())
         // console.log("videotracksssssss,",ev.streams[0].getVideoTracks()[0].id)
         
-        if (!container2) {
+        if (!container) {
             throw new Error("Container2 not found");
         }
 
         // Logging for debugging
-        console.log('stream',remoteStream.getTracks());
+        console.log('stream',remoteStream.getVideoTracks());
 
         // Check if remoteStream is a valid MediaStream
         if (!(remoteStream instanceof MediaStream)) {
             throw new Error('Invalid remote stream object');
         }
         if(ev.streams[0].getVideoTracks()[0].id === peerSSID){
-            let screensharecon = document.getElementById("container3")
-            let remoteVideoElement1 = document.createElement('video');
-            remoteVideoElement1.style.position = 'absolute'
-            remoteVideoElement1.style.left = '0px'
-            remoteVideoElement1.style.top = '-200px'
-            remoteVideoElement1.style.minWidth = '540px'
-            remoteVideoElement1.style.maxWidth = '540px'
-            remoteVideoElement1.style.minHeight = '700px'
-            remoteVideoElement1.style.maxHeight = '700px'
-            remoteVideoElement1.style.borderRadius = '20px'
-            remoteVideoElement1.autoplay = true;
-            remoteVideoElement1.playsinline = true;
-            screensharecon.appendChild(remoteVideoElement1);
-            remoteVideoElement1.srcObject = remoteStream;
+            let remoteVideoElement = container3.querySelector('video');
+                if (!remoteVideoElement) {
+                    remoteVideoElement = document.createElement('video');
+                }
+                    container.style.display = 'none'
+                    container.classList.add("shift-right")
+                    container.style.display = 'block'
+                    updateVideoWidth(container)
+                    peercontainer.style.display = 'none'
+                    peercontainer.classList.add("shift-right")
+                    peercontainer.style.display = 'block'
+                    updateVideoWidth(peercontainer)
+                    //
+                    remoteVideoElement.style.position = 'absolute'
+                    remoteVideoElement.style.left = '0px'
+                    remoteVideoElement.style.top = '50%'
+                    remoteVideoElement.style.transform = 'translate(0,-50%)'
+                    remoteVideoElement.style.maxWidth = '1150px'
+                    remoteVideoElement.style.borderRadius = '10px'
+                    remoteVideoElement.autoplay = true;
+                    remoteVideoElement.playsinline = true;
+                    container3.appendChild(remoteVideoElement);
+                    remoteVideoElement.srcObject = remoteStream;
+
+                    socket.on("removeSSsrcFromPeers",()=>{
+                        remoteVideoElement.srcObject = null
+                    })
         }
         else{
         // Get the video element or create one if it doesn't exist
-        let remoteVideoElement = container2.querySelector('video');
+        let remoteVideoElement = container.querySelector('video');
         if (!remoteVideoElement) {
             remoteVideoElement = document.createElement('video');
+        }
             remoteVideoElement.style.position = 'absolute'
-            remoteVideoElement.style.left = '0px'
-            remoteVideoElement.style.top = '-200px'
-            remoteVideoElement.style.minWidth = '540px'
-            remoteVideoElement.style.maxWidth = '540px'
-            remoteVideoElement.style.minHeight = '700px'
-            remoteVideoElement.style.maxHeight = '700px'
-            remoteVideoElement.style.borderRadius = '20px'
+            remoteVideoElement.style.left = '50%'
+            remoteVideoElement.style.top = '50%'
+            remoteVideoElement.style.transform = 'translate(-50%,-50%)';  
+            // remoteVideoElement.style.minWidth = '540px'
+            remoteVideoElement.style.minWidth = `${container.offsetWidth}px`
+            remoteVideoElement.style.maxWidth = `${container.offsetWidth}px`
+            remoteVideoElement.style.borderRadius = '10px'
             remoteVideoElement.autoplay = true;
             remoteVideoElement.playsinline = true;
             // remoteVideoElement.volume = '0'
-            container2.appendChild(remoteVideoElement);
-        }
+            container.appendChild(remoteVideoElement);
+        
 
         // Set the srcObject property to the MediaStream
         remoteVideoElement.srcObject = remoteStream;
@@ -418,6 +436,7 @@
     socket.on("peerSSID",(data)=>{
         peerSSID = data.SSID;
     })
+    
     const displayMediaOptions = {
         video: {
             displaySurface: "browser",
@@ -447,40 +466,61 @@
 
         async function screenshare() {
             try {
+                const peercontainer = document.querySelector(".container")
                 const container = document.querySelector('.container3');
+                const mycontainer = document.querySelector(".container2")
                 const url = await startCapture();
                 console.log("ye h screen share url",url);
                 const tracks = url.getTracks();
+                const t = url.getVideoTracks();
 
                 tracks.forEach((track) => {
                 console.log("tracks",track)
                 socket.emit("screenshareID",{to:remoteSocketID,SSID:track.id});
                 peer.peer.addTrack(track, url);
-    });
+                });
                 let remoteVideoElement = container.querySelector('video');
                 if (!remoteVideoElement) {
-            remoteVideoElement = document.createElement('video');
-            remoteVideoElement.style.position = 'absolute'
-            remoteVideoElement.style.left = '0px'
-            remoteVideoElement.style.top = '30px'
-            remoteVideoElement.style.maxWidth = '1100px'
-            remoteVideoElement.style.maxHeight = '1800px'
-            /*remoteVideoElement.style.minWidth = '540px'
-            
-            remoteVideoElement.style.minHeight = '700px'
-            */
-            remoteVideoElement.style.borderRadius = '10px'
-            remoteVideoElement.autoplay = true;
-            remoteVideoElement.playsinline = true;
-            container.appendChild(remoteVideoElement);
-            remoteVideoElement.srcObject = url;
+                    remoteVideoElement = document.createElement('video');
+                }
+                    mycontainer.style.display = 'none'
+                    mycontainer.classList.add("shift-right")
+                    mycontainer.style.display = 'block'
+                    updateVideoWidth(mycontainer);
+                    peercontainer.style.display = 'none'
+                    peercontainer.classList.add("shift-right")
+                    peercontainer.style.display = 'block'
+                    updateVideoWidth(peercontainer);
 
-        }
+
+                    remoteVideoElement.style.position = 'absolute'
+                    remoteVideoElement.style.left = '0px'
+                    remoteVideoElement.style.top = '50%'
+                    remoteVideoElement.style.transform = 'translate(0,-50%)'
+                    remoteVideoElement.style.maxWidth = '1150px'
+                    remoteVideoElement.style.borderRadius = '10px'
+                    remoteVideoElement.autoplay = true;
+                    remoteVideoElement.playsinline = true;
+                    container.appendChild(remoteVideoElement);
+                    remoteVideoElement.srcObject = url;
+
+                url.getVideoTracks()[0].onended = function () {
+                    t.forEach((track)=>{
+                        url.removeTrack(track);
+                        track.stop()
+                        console.log(url.getVideoTracks())
+                    })
+                    socket.emit("removeSSsrc",remoteSocketID)
+                    remoteVideoElement.srcObject = null
+                };
+                
                 // renderReactPlayer(container, { url, playing: true });
             } catch (error) {
                 console.error('Error setting up player:', error);
             }
+            
         }
+        
         document.getElementById("screenshare").addEventListener('click',function(){
             screenshare();
         })
@@ -493,7 +533,13 @@
             videopanel.style.right = isOpen ? "0px" : "180px" 
 
         });
-        
+
+        function updateVideoWidth(container) {
+            if(container.querySelector('video')){
+                container.querySelector('video').style.maxWidth = `${container.offsetWidth}px`; 
+            }
+        }
+
 
 
     </script>
