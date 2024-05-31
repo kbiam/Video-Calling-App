@@ -52,7 +52,8 @@
         let connectionelement = document.getElementById('users')
         let localstream;
         let peerSSID;
-
+        // document.querySelector('.container2').classList.add('shift-right')
+        // document.querySelector('.container').classList.add('shift-right')
 
         const socket = io();
         socket.emit('join-room', { roomID: roomID, emailID: emailID });
@@ -64,7 +65,7 @@
             // Update UI or perform other actions as needed
         });
 
-        socket.on("user-joined",  (data) => {
+        socket.on("user-joined",  async (data) => {
             // const p = document.createElement("p");
             // p.style.color = 'black';
             // p.style.fontWeight = 'bold';
@@ -73,6 +74,13 @@
             // setTimeout(()=>{
             //     document.getElementById('container').style.display = 'block'
             // },500);
+            await new Promise((resolve) => {
+        document.querySelector('.container2').style.right = '10px';
+        // Add a short delay to ensure the style is applied before proceeding
+        setTimeout(resolve, 500);
+    });           
+    document.querySelector('.container').classList.add('show');
+
             let youremail = document.cookie.split("=")[1]
 
             document.getElementById('peeremail').innerText = data.emailID
@@ -81,7 +89,13 @@
             // document.querySelector('.messagesbox').appendChild(p);
             document.getElementById('users').innerText = '🟢';
         });
-        socket.on("Settingremotesocketid",(data)=>{
+        socket.on("Settingremotesocketid",async (data)=>{
+            await new Promise((resolve) => {
+        document.querySelector('.container2').style.right = '10px';
+        // Add a short delay to ensure the style is applied before proceeding
+        setTimeout(resolve, 500);
+    });           
+    document.querySelector('.container').classList.add('show');
             remoteSocketID = data.id;
             document.getElementById('peeremail').innerText = data.youremail
 
@@ -103,7 +117,7 @@
         });
 
         socket.on("incoming-call", async (data) => {
-            alert("Incoming Call")
+            // alert("Incoming Call")
 
             console.log(`${data.from} is calling you`);
             if (!remoteSocketID) {

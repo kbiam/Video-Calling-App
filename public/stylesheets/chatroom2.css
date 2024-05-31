@@ -71,8 +71,10 @@ body {
     /* margin-right: 0px; */
     transition: right 0.5s ease-out;
 }
-.container{
-    /* display: none; */
+.container {
+    display: block; /* Set to block by default */
+    opacity: 0; /* Initially hide the container */
+    visibility: hidden; /* Initially hide the container */
     width: 540px;
     height: 350px;
     border-radius: 10px;
@@ -80,10 +82,15 @@ body {
     position: absolute;
     top: 150px;
     box-shadow: 0 0 8px 2px rgba(254, 255, 255, 0.459);
-    /* border: 1px rgb(0, 86, 0) solid; */
     overflow: hidden;
-
+    transition: opacity 0.5s ease-in, visibility 0.5s ease-in; /* Smooth transition for opacity and visibility */
 }
+
+.container.show {
+    opacity: 1; /* Show the container */
+    visibility: visible; /* Show the container */
+}
+
 .container img{
     position: absolute;
     width: 20%;
@@ -111,10 +118,12 @@ body {
     position: absolute;
     top: 150px;
     
-    right:10px;
+    right:310px;
     /* border: 1px rgb(128, 128, 128) solid; */
     overflow: hidden;
     box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.459);
+    transition: right 0.5s ease-out;
+
 
 }
 .container2.shift-right{
